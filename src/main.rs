@@ -96,11 +96,11 @@ fn collect_type_defs(content: &str) -> TypeDefs {
 }
 
 fn read_all(path: &Path) -> String {
-    let mut in_file = File::open(path).expect(&format!("Failed to open {:?}", path));
+    let mut in_file = File::open(path).unwrap_or_else(|_| panic!("Failed to open {:?}", path));
     let mut content = String::new();
     in_file
         .read_to_string(&mut content)
-        .expect(&format!("Failed to read {:?}", path));
+        .unwrap_or_else(|_| panic!("Failed to read {:?}", path));
     content
 }
 
@@ -116,7 +116,7 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
 
     // Add code to check structs
     for def in defs.structs.iter() {
-        if def.name.starts_with("_") {
+        if def.name.starts_with('_') {
             continue;
         }
         main_func += &format!(
@@ -128,13 +128,13 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
 
     // Add code to check unions
     for def in defs.unions.iter() {
-        if def.name.starts_with("_") {
+        if def.name.starts_with('_') {
             continue;
         }
 
         let mut valid_fields = Vec::<String>::new();
         for f in def.fields.iter() {
-            if !f.starts_with("_") {
+            if !f.starts_with('_') {
                 valid_fields.push(f.to_string());
             }
         }
