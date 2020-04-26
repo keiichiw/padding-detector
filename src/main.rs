@@ -1,25 +1,33 @@
 #[macro_use]
 extern crate clap;
 
-use bindgen::builder;
-use clap::App;
+use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn run_bindgen(path: &str) {
+use bindgen::builder;
+use clap::App;
+
+fn run_bindgen(path: &Path) -> PathBuf {
     let bindings = builder()
-        .header(path)
+        .header(path.to_str().unwrap())
         .ignore_functions()
         .layout_tests(false)
         .derive_default(true)
         .generate()
         .expect("failed to generate bindings");
 
+    let mut out_file = env::temp_dir();
+    out_file.push("bindgen.rs");
+
     bindings
-        .write_to_file("/tmp/output.rs")
+        .write_to_file(&out_file)
         .expect("failed to write to file");
+
+    out_file
 }
 
 #[derive(Debug)]
@@ -87,21 +95,21 @@ fn collect_type_defs(content: &str) -> TypeDefs {
     TypeDefs { structs, unions }
 }
 
-fn read_all(path: &str) -> String {
-    let mut in_file = File::open(path).expect(&format!("Failed to open {}", path));
+fn read_all(path: &Path) -> String {
+    let mut in_file = File::open(path).expect(&format!("Failed to open {:?}", path));
     let mut content = String::new();
     in_file
         .read_to_string(&mut content)
-        .expect(&format!("Failed to read {}", path));
+        .expect(&format!("Failed to read {:?}", path));
     content
 }
 
-fn generate_code() {
-    let content = read_all("/tmp/output.rs");
+fn generate_code(bindgen_rs: &Path) -> PathBuf {
+    let content = read_all(bindgen_rs);
     let defs = collect_type_defs(&content);
 
     let header = "#![feature(alloc_layout_extra)]\n";
-    let lib = read_all("./data/boilerplate.rs");
+    let lib = read_all(Path::new("./data/boilerplate.rs"));
 
     let mut main_func = String::new();
     main_func += "fn main() {\n";
@@ -139,23 +147,35 @@ fn generate_code() {
 
     main_func += "}\n";
 
-    let mut out_file = File::create("/tmp/generated.rs").unwrap();
+    let mut out_path = env::temp_dir();
+    out_path.push("generated.rs");
+    let mut out_file = File::create(&out_path).unwrap();
 
-    // write the `lorem_ipsum` string to `file`, returns `io::result<()>`
     out_file.write_all(header.as_bytes()).unwrap();
     out_file.write_all(content.as_bytes()).unwrap();
     out_file.write_all(lib.as_bytes()).unwrap();
     out_file.write_all(main_func.as_bytes()).unwrap();
+
+    out_path
 }
 
-fn exec_code(rs_path: &str) {
+fn exec_code(rs_path: &Path) {
+    let mut exe_path = env::temp_dir();
+    exe_path.push("generated.out");
+
     let status = Command::new("rustc")
-        .args(&[rs_path, "-o", "/tmp/generated.exe", "-A", "warnings"])
+        .args(&[
+            rs_path.to_str().unwrap(),
+            "-o",
+            exe_path.to_str().unwrap(),
+            "-A",
+            "warnings",
+        ])
         .status()
         .expect("failed to execute process");
     assert!(status.success());
 
-    let output = Command::new("/tmp/generated.exe")
+    let output = Command::new(&exe_path)
         .output()
         .expect("failed to execute process");
     println!("{}", String::from_utf8(output.stdout).unwrap());
@@ -164,9 +184,9 @@ fn exec_code(rs_path: &str) {
 fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from_yaml(yaml).get_matches();
-    let input = matches.value_of("INPUT").unwrap();
+    let input = Path::new(matches.value_of("INPUT").unwrap());
 
-    run_bindgen(input);
-    generate_code();
-    exec_code("/tmp/generated.rs");
+    let bindgen_rs = run_bindgen(input);
+    let generated_rs = generate_code(&bindgen_rs);
+    exec_code(&generated_rs);
 }
