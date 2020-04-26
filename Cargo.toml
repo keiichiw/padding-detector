@@ -1,5 +1,5 @@
 [package]
-name = "struct-paddings-detector"
+name = "padding-detector"
 version = "0.1.0"
 authors = ["Keiichi Watanabe <udon.watanabe@gmail.com>"]
 edition = "2018"

@@ -1,4 +1,4 @@
-# struct-paddings-detector
+# padding-detector
 
 A command line tool to detect implicit paddings that will be added in C structs and unions.
 
@@ -22,7 +22,7 @@ union test2 {
         uint64_t a;
         char b[9]; // followed by 7-byte padding
 };
-$ ./target/release/struct-paddings-detector ./examples/simple.h
+$ ./target/release/padding-detector ./examples/simple.h
 Checking `struct test1`...
  Found: 3-byte padding before "b"
  Found: 7-byte padding at the end
@@ -42,7 +42,7 @@ You can see the generated Rust codes by the following command:
 
 ```
 # You'll find './out/bindings.rs' and './out/generated.rs' for step 1 and 2, respectively.
-$ ./target/release/struct-paddings-detector ./examples/simple.h -o ./out/
+$ ./target/release/padding-detector ./examples/simple.h -o ./out/
 ```
 
 The reason why it generates Rust bindings instead of processing C directly is it's easy to process
