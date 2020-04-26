@@ -24,7 +24,7 @@ fn run_bindgen(path: &Path, outdir: Option<&str>) -> PathBuf {
         Some(dir) => Path::new(dir).to_path_buf(),
         None => std::env::temp_dir(),
     };
-    out_file.push("bindgen.rs");
+    out_file.push("bindings.rs");
 
     bindings
         .write_to_file(&out_file)
@@ -107,8 +107,8 @@ fn read_all(path: &Path) -> String {
     content
 }
 
-fn generate_code(bindgen_rs: &Path) -> PathBuf {
-    let content = read_all(bindgen_rs);
+fn generate_code(bindings_rs: &Path) -> PathBuf {
+    let content = read_all(bindings_rs);
     let defs = collect_type_defs(&content);
 
     let header = "#![feature(alloc_layout_extra)]\n";
@@ -150,7 +150,7 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
 
     main_func += "}\n";
 
-    let mut out_path = bindgen_rs.parent().unwrap().to_path_buf();
+    let mut out_path = bindings_rs.parent().unwrap().to_path_buf();
     out_path.push("generated.rs");
     let mut out_file = File::create(&out_path).unwrap();
 
@@ -201,7 +201,7 @@ fn main() {
         None => None,
     };
 
-    let bindgen_rs = run_bindgen(input, outdir);
-    let generated_rs = generate_code(&bindgen_rs);
+    let bindings_rs = run_bindgen(input, outdir);
+    let generated_rs = generate_code(&bindings_rs);
     exec_code(&generated_rs);
 }

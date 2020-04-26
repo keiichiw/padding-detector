@@ -1,8 +1,11 @@
 # struct-paddings-detector
 
-Detect implicit paddings in C structs and unions.
+A command line tool to detect implicit paddings that will be added in C structs and unions.
+
+## Usage
 
 ```
+$ cargo build --release
 $ cat ./examples/simple.h
 #include<stdint.h>
 
@@ -19,11 +22,36 @@ union test2 {
         uint64_t a;
         char b[9]; // followed by 7-byte padding
 };
-$ cargo run ./examples/simple.h
-...
+$ ./target/release/struct-paddings-detector ./examples/simple.h
 Checking `struct test1`...
-3-byte padding before "b"
-7-byte padding at the end
+ Found: 3-byte padding before "b"
+ Found: 7-byte padding at the end
 Checking `union test2`...
-7-byte padding is inserted
+ Found: 7-byte padding is inserted
 ```
+
+## How it works
+
+The work flow consists of the following three steps:
+
+1. Generates Rust FFI bindings to C structs in the given header by [bindgen].
+2. Adds functions in the generated Rust file to check paddings.
+3. Executes the generated Rust program in 2.
+
+You can see the generated Rust codes by the following command:
+
+```
+# You'll find './out/bindings.rs' and './out/generated.rs' for step 1 and 2, respectively.
+$ ./target/release/struct-paddings-detector ./examples/simple.h -o ./out/
+```
+
+The reason why it generates Rust bindings instead of processing C directly is it's easy to process
+Rust's ASTs thanks to [syn].
+
+[bindgen]: https://github.com/rust-lang/rust-bindgen
+[syn]: https://github.com/dtolnay/syn
+
+## Requirements
+
+This tool depends on `libclang`, on which `bindgen` depends.
+See [bindgen's doc](https://rust-lang.github.io/rust-bindgen/requirements.html).
