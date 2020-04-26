@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate clap;
 
-use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -12,7 +11,7 @@ use ansi_term::Colour::Red;
 use bindgen::builder;
 use clap::App;
 
-fn run_bindgen(path: &Path) -> PathBuf {
+fn run_bindgen(path: &Path, outdir: Option<&str>) -> PathBuf {
     let bindings = builder()
         .header(path.to_str().unwrap())
         .ignore_functions()
@@ -21,7 +20,10 @@ fn run_bindgen(path: &Path) -> PathBuf {
         .generate()
         .expect("failed to generate bindings");
 
-    let mut out_file = env::temp_dir();
+    let mut out_file = match outdir {
+        Some(dir) => Path::new(dir).to_path_buf(),
+        None => std::env::temp_dir(),
+    };
     out_file.push("bindgen.rs");
 
     bindings
@@ -113,7 +115,7 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
     let lib = read_all(Path::new("./data/boilerplate.rs"));
 
     let mut main_func = String::new();
-    main_func += "fn main() {\n";
+    main_func += "\nfn main() {\n";
 
     // Add code to check structs
     for def in defs.structs.iter() {
@@ -148,7 +150,7 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
 
     main_func += "}\n";
 
-    let mut out_path = env::temp_dir();
+    let mut out_path = bindgen_rs.parent().unwrap().to_path_buf();
     out_path.push("generated.rs");
     let mut out_file = File::create(&out_path).unwrap();
 
@@ -161,7 +163,7 @@ fn generate_code(bindgen_rs: &Path) -> PathBuf {
 }
 
 fn exec_code(rs_path: &Path) {
-    let mut exe_path = env::temp_dir();
+    let mut exe_path = rs_path.parent().unwrap().to_path_buf();
     exe_path.push("generated.out");
 
     let status = Command::new("rustc")
@@ -188,8 +190,18 @@ fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from_yaml(yaml).get_matches();
     let input = Path::new(matches.value_of("INPUT").unwrap());
+    let outdir = match matches.value_of("OUTDIR") {
+        Some(dir) => {
+            if let Err(e) = fs::create_dir_all(dir) {
+                println!("Failed to create an output directory {}: {}", dir, e);
+                return;
+            }
+            Some(dir)
+        }
+        None => None,
+    };
 
-    let bindgen_rs = run_bindgen(input);
+    let bindgen_rs = run_bindgen(input, outdir);
     let generated_rs = generate_code(&bindgen_rs);
     exec_code(&generated_rs);
 }

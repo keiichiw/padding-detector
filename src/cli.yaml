@@ -6,3 +6,9 @@ args:
         help: Sets the input header file to check
         required: true
         index: 1
+    - OUTDIR:
+        short: o
+        long: outdir
+        value_name: DIR
+        help: Set a directory to store generated code.
+        takes_value: true
