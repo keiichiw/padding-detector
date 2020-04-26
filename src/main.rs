@@ -1,5 +1,4 @@
 use bindgen::builder;
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Read;
@@ -25,33 +24,63 @@ struct StructDef {
     fields: Vec<String>,
 }
 
-fn get_struct_defs(content: &str) -> Result<Vec<StructDef>, Box<dyn Error>> {
-    let ast = syn::parse_file(content)?;
-    let mut defs = Vec::<StructDef>::new();
+#[derive(Debug)]
+struct UnionDef {
+    name: String,
+    fields: Vec<String>,
+}
+
+struct TypeDefs {
+    structs: Vec<StructDef>,
+    unions: Vec<UnionDef>,
+}
+
+fn collect_type_defs(content: &str) -> TypeDefs {
+    let ast = syn::parse_file(content).expect("Failed to construct an AST.");
+    let mut structs = Vec::<StructDef>::new();
+    let mut unions = Vec::<UnionDef>::new();
 
     for ast_item in ast.items.iter() {
-        let item = match ast_item {
-            syn::Item::Struct(item) => item,
+        match ast_item {
+            syn::Item::Struct(item) => {
+                let mut fields = Vec::<String>::new();
+                for f in item.fields.iter() {
+                    match &f.ident {
+                        Some(ident) => fields.push(ident.to_string()),
+                        None => {
+                            println!("ignore an unnamed field in struct {}", item.ident);
+                        }
+                    }
+                }
+                structs.push(StructDef {
+                    name: item.ident.to_string(),
+                    fields,
+                });
+            }
+            syn::Item::Union(item) => {
+                let mut fields = Vec::<String>::new();
+                for f in item.fields.named.iter() {
+                    match &f.ident {
+                        Some(ident) => {
+                            fields.push(ident.to_string());
+                        }
+                        None => {
+                            println!("ignore an unnamed field in union {}", item.ident);
+                        }
+                    }
+                }
+                unions.push(UnionDef {
+                    name: item.ident.to_string(),
+                    fields,
+                });
+            }
             _ => {
                 continue;
             }
         };
-
-        let mut fields = Vec::<String>::new();
-        for f in item.fields.iter() {
-            match &f.ident {
-                Some(ident) => fields.push(ident.to_string()),
-                None => panic!("unnamed field in {}", item.ident.to_string()),
-            }
-        }
-
-        defs.push(StructDef {
-            name: item.ident.to_string(),
-            fields,
-        });
     }
 
-    Ok(defs)
+    TypeDefs { structs, unions }
 }
 
 fn read_all(path: &str) -> String {
@@ -65,19 +94,45 @@ fn read_all(path: &str) -> String {
 
 fn generate_code() {
     let content = read_all("/tmp/output.rs");
-    let structs = get_struct_defs(&content).unwrap();
+    let defs = collect_type_defs(&content);
 
     let header = "#![feature(alloc_layout_extra)]\n";
     let lib = read_all("./data/boilerplate.rs");
 
     let mut main_func = String::new();
     main_func += "fn main() {\n";
-    for def in structs.iter() {
+
+    // Add code to check structs
+    for def in defs.structs.iter() {
         if def.name.starts_with("_") {
             continue;
         }
-        main_func += &format!("check_struct!({}, {});", def.name, def.fields.join(", "));
+        main_func += &format!(
+            "    check_struct!({}, {});\n",
+            def.name,
+            def.fields.join(", ")
+        );
     }
+
+    // Add code to check unions
+    for def in defs.unions.iter() {
+        if def.name.starts_with("_") {
+            continue;
+        }
+
+        let mut valid_fields = Vec::<String>::new();
+        for f in def.fields.iter() {
+            if !f.starts_with("_") {
+                valid_fields.push(f.to_string());
+            }
+        }
+        main_func += &format!(
+            "    check_union!({}, {});\n",
+            def.name,
+            valid_fields.join(", ")
+        );
+    }
+
     main_func += "}\n";
 
     let mut out_file = File::create("/tmp/generated.rs").unwrap();

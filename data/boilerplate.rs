@@ -41,3 +41,26 @@ macro_rules! check_struct {
         }
     };
 }
+
+/// Calculates the max size of fields in a given union instance.
+macro_rules! max_field_size {
+    ($instance:ident, $field:ident) => {
+        unsafe { std::mem::size_of_val(&$instance.$field) }
+    };
+    ($instance:ident, $field:ident, $($more:ident),+) => {
+        std::cmp::max(max_field_size!($instance, $field), max_field_size!($instance, $($more),+))
+    }
+}
+
+/// Checks union's padding by check_union!(<union name>, <field name>,...).
+macro_rules! check_union {
+    ($union:ty, $( $field:ident ),+ ) => {{
+        println!("Checking `union {}`...", stringify!($union));
+        let instance: $union = Default::default();
+        let max_size = max_field_size!(instance, $($field),+);
+        let diff = std::mem::size_of_val(&instance) - max_size;
+        if diff != 0 {
+            println!("{}-byte padding is inserted", diff);
+        }
+    }};
+}
