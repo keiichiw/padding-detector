@@ -1,5 +1,3 @@
-extern crate proc_macro;
-
 use bindgen::builder;
 use std::error::Error;
 use std::fs::File;
@@ -101,6 +99,9 @@ fn extend_layout<T>(l: &std::alloc::Layout, name: &str, v: &T) -> std::alloc::La
     let mut main_func = String::new();
     main_func += "fn main() {\n";
     for def in structs.iter() {
+        if def.name.starts_with("_") {
+            continue;
+        }
         main_func += "{\n";
         main_func += &generate_snippet(def);
         main_func += "}\n";
