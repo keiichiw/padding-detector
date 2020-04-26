@@ -1,0 +1,8 @@
+name: struct-paddings-detector
+version: "1.0"
+about: Detect implicit paddings in C structs and unions.
+args:
+    - INPUT:
+        help: Sets the input header file to check
+        required: true
+        index: 1

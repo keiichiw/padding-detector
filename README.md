@@ -19,7 +19,7 @@ union test2 {
         uint64_t a;
         char b[9]; // followed by 7-byte padding
 };
-$ cargo run
+$ cargo run ./examples/simple.h
 ...
 Checking `struct test1`...
 3-byte padding before "b"

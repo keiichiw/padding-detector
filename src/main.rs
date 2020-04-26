@@ -1,4 +1,8 @@
+#[macro_use]
+extern crate clap;
+
 use bindgen::builder;
+use clap::App;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Read;
@@ -158,7 +162,11 @@ fn exec_code(rs_path: &str) {
 }
 
 fn main() {
-    run_bindgen("./examples/simple.h");
+    let yaml = load_yaml!("cli.yaml");
+    let matches = App::from_yaml(yaml).get_matches();
+    let input = matches.value_of("INPUT").unwrap();
+
+    run_bindgen(input);
     generate_code();
     exec_code("/tmp/generated.rs");
 }
