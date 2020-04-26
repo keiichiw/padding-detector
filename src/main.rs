@@ -8,6 +8,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use ansi_term::Colour::Red;
 use bindgen::builder;
 use clap::App;
 
@@ -175,10 +176,12 @@ fn exec_code(rs_path: &Path) {
         .expect("failed to execute process");
     assert!(status.success());
 
-    let output = Command::new(&exe_path)
+    let raw_output = Command::new(&exe_path)
         .output()
         .expect("failed to execute process");
-    println!("{}", String::from_utf8(output.stdout).unwrap());
+    let mut output = String::from_utf8(raw_output.stdout).unwrap();
+    output = output.replace("Found:", &Red.paint(" Found:").to_string());
+    print!("{}", output);
 }
 
 fn main() {

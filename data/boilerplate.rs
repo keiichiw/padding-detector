@@ -1,10 +1,14 @@
-/* A library to be inserted to an auto-generated code */
+// A library to be inserted to an auto-generated code
 
 /// Updates a given layout with a field and check if a padding is added.
 fn extend_layout<T>(l: &std::alloc::Layout, name: &str, v: &T) -> std::alloc::Layout {
     let (new_l, offset) = l.extend(std::alloc::Layout::for_value(v)).expect("x");
     if offset != l.size() {
-        println!("{}-byte padding before \"{}\"", offset - l.size(), name);
+        println!(
+            "Found: {}-byte padding before \"{}\"",
+            offset - l.size(),
+            name
+        );
     }
     new_l
 }
@@ -34,7 +38,7 @@ macro_rules! check_struct {
             // Check if a padding will be inserted at the end of struct.
             let pad = layout.padding_needed_for(layout.align());
             if pad != 0 {
-                println!("{}-byte padding at the end", pad);
+                println!("Found: {}-byte padding at the end", pad);
             }
             layout = layout.pad_to_align();
             assert_eq!(layout.size(), std::mem::size_of_val(&instance));
@@ -60,7 +64,7 @@ macro_rules! check_union {
         let max_size = max_field_size!(instance, $($field),+);
         let diff = std::mem::size_of_val(&instance) - max_size;
         if diff != 0 {
-            println!("{}-byte padding is inserted", diff);
+            println!("Found: {}-byte padding is inserted", diff);
         }
     }};
 }
