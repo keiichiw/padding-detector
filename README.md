@@ -23,11 +23,12 @@ union test2 {
         char b[9]; // followed by 7-byte padding
 };
 $ ./target/release/padding-detector ./examples/simple.h
-Checking `struct test1`...
- Found: 3-byte padding before "b"
- Found: 7-byte padding at the end
-Checking `union test2`...
- Found: 7-byte padding is inserted
+Checking `struct test1` (size=24)...
+ Warning: Implicit padding was found: sum of fields: 14, struct size: 24
+   Found: 3-byte padding before "b"
+   Found: 7-byte padding at the end
+Checking `union test2` (size=16)...
+   Found: 7-byte padding is inserted
 ```
 
 ## How it works
