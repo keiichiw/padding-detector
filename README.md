@@ -4,7 +4,7 @@ A command line tool to detect implicit paddings that will be added in C structs 
 
 ## Usage
 
-```
+```sh
 $ cargo build --release
 $ cat ./examples/simple.h
 #include<stdint.h>
